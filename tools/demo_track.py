@@ -30,6 +30,11 @@ def make_parser():
         #"--path", default="./datasets/mot/train/MOT17-05-FRCNN/img1", help="path to images or video"
         "--path", default="./videos/palace.mp4", help="path to images or video"
     )
+    
+    parser.add_argument(
+        #"--path", default="./datasets/mot/train/MOT17-05-FRCNN/img1", help="path to images or video"
+        "--txt_path",  help="path to txt file containing info on"
+    )
     parser.add_argument("--camid", type=int, default=0, help="webcam demo camera id")
     parser.add_argument(
         "--save_result",
@@ -180,12 +185,14 @@ def image_demo(predictor, vis_folder, current_time, args):
         files = get_image_list(args.path)
     else:
         files = [args.path]
+    
     files.sort()
     tracker = BYTETracker(args, frame_rate=args.fps)
     timer = Timer()
     results = []
 
     for frame_id, img_path in enumerate(files, 1):
+        import pdb; pdb.set_trace()
         outputs, img_info = predictor.inference(img_path, timer)
         if outputs[0] is not None:
             online_targets = tracker.update(outputs[0], [img_info['height'], img_info['width']], exp.test_size)
@@ -253,12 +260,36 @@ def imageflow_demo(predictor, vis_folder, current_time, args):
     timer = Timer()
     frame_id = 0
     results = []
+    
+    if args.txt_path:
+        person_info_per_frame = {}
+        with open(args.txt_path, 'r') as f:
+            for line in f:
+                if 'person' in line:
+                    parts = line.split()
+                    frame_num = int(parts[0])
+                    obj_id = int(parts[1])
+                    bbox_info = [float(x) for x in parts[2:6]]
+                    confidence = [float(x) for x in parts[6:8]]
+                    person_info_per_frame.setdefault(frame_num, []).append((obj_id, bbox_info, confidence, float(0)))
+
+        # Create tensors for each frame
+        person_tensors = {}
+        for frame_num, person_info in person_info_per_frame.items():
+            bbox_list = []
+            for obj_id, bbox_info, confidence, obj_class in person_info:
+                bbox_list.append([bbox_info[0],bbox_info[1],bbox_info[2],bbox_info[3], confidence[0], confidence[1], obj_class])
+            person_tensors[frame_num] = torch.tensor(bbox_list)
+ 
+    
     while True:
         if frame_id % 20 == 0:
             logger.info('Processing frame {} ({:.2f} fps)'.format(frame_id, 1. / max(1e-5, timer.average_time)))
         ret_val, frame = cap.read()
         if ret_val:
             outputs, img_info = predictor.inference(frame, timer)
+            if args.txt_path:
+                outputs[0] = person_tensors[frame_id + 1]
             if outputs[0] is not None:
                 online_targets = tracker.update(outputs[0], [img_info['height'], img_info['width']], exp.test_size)
                 online_tlwhs = []

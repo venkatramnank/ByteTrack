@@ -278,6 +278,11 @@ cd <ByteTrack_HOME>
 python3 tools/demo_track.py video -f exps/example/mot/yolox_x_mix_det.py -c pretrained/bytetrack_x_mot17.pth.tar --fp16 --fuse --save_result
 ```
 
+Demo by using a txt file:
+```shell
+python tools/demo_track.py video -f exps/example/mot/yolox_l_mix_det.py -c pretrained/bytetrack_l_mot17.pth.tar --fp16 --fuse --save_result --txt_path /home/kalyanav/Playground/inria_assignment/forked/YOLOX/YOLOX_outputs/yolox_l/vis_res/2024_04_03_13_27_24/palace_results.txt --tsize 640
+```
+
 ## Deploy
 
 1.  [ONNX export and ONNXRuntime](./deploy/ONNXRuntime)
